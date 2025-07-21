@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Counter } from './pages/counter'
 import { TodoApp } from './pages/todo-list'
 import { PerformanceTest } from './pages/performance-test'
+import { MultiInstanceDemo } from './pages/multi-instance'
 
 const examples = [
   {
@@ -15,6 +16,12 @@ const examples = [
     title: '待办事项列表',
     description: '演示复杂状态、不可变操作和深度更新',
     component: TodoApp
+  },
+  {
+    id: 'multi-instance',
+    title: '多实例 Store',
+    description: '演示面向对象设计和多实例 Store 的使用',
+    component: MultiInstanceDemo
   },
   {
     id: 'performance',
