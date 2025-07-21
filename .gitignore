@@ -1,0 +1,10 @@
+debug
+node_modules
+dist
+.DS_Store
+*.log
+.env
+.env.local
+.vscode/settings.json
+coverage
+.idea
