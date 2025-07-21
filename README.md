@@ -25,7 +25,7 @@ yarn add tiny-store
 
 ### 基础用法
 
-```typescript
+```tsx
 import { ReactStore } from 'tiny-store'
 
 // 定义状态类型（使用 type）
@@ -60,7 +60,7 @@ function Counter() {
 
 ### 不可变数组操作
 
-```typescript
+```tsx
 import { ReactStore, op } from 'tiny-store'
 
 type TodoState = {
@@ -99,7 +99,7 @@ todoStore.setState({
 
 ### 计算状态
 
-```typescript
+```tsx
 import { ReactStore } from 'tiny-store'
 
 type AppState = {
@@ -133,7 +133,7 @@ const todoStore = new TodoStore()
 
 ### 多实例 Store 使用
 
-```typescript
+```tsx
 import React, { createContext, useContext, useState } from 'react'
 import { ReactStore, op } from 'tiny-store'
 
@@ -238,7 +238,7 @@ function App() {
 
 ### 复杂不可变操作
 
-```typescript
+```tsx
 import { ReactStore, op } from 'tiny-store'
 
 type User = {
@@ -285,7 +285,7 @@ userStore.setState({
 
 ### ReactStore
 
-```typescript
+```tsx
 class ReactStore<T> extends Store<T> {
   constructor(initialState: T)
   use<D>(selector: (state: T) => D): D // React hook
@@ -298,7 +298,7 @@ class ReactStore<T> extends Store<T> {
 
 ### Store (基础类)
 
-```typescript
+```tsx
 class Store<T> {
   constructor(initialState: T)
   setState(updates: Partial<T>): void
@@ -329,7 +329,7 @@ class Store<T> {
 
 ### 类型定义
 
-```typescript
+```tsx
 type ValueUpdater<T> = T | ((value: T) => T)
 type ValueMatcher<T> = T | ((value: T) => boolean)
 type IndexFinder<T> = number | ((arr: T[]) => number)
@@ -358,7 +358,7 @@ TinyStore 采用**面向对象设计**，让 Store 成为包含业务逻辑的**
 
 ### 💡 充血模型示例
 
-```typescript
+```tsx
 // 状态类型定义（使用 type）
 type UserState = {
   profile: ProfileData
@@ -427,7 +427,7 @@ pnpm run examples
 
 #### 🔍 TypeScript 类型系统差异
 
-```typescript
+```tsx
 // ❌ 不推荐：使用 interface
 interface UserState {
   name: string
@@ -450,7 +450,7 @@ type UserState = {
 
 #### 🚨 Interface 可能遇到的问题
 
-```typescript
+```tsx
 // interface 可能需要额外的 string index 签名
 interface BadState {
   count: number
@@ -480,7 +480,7 @@ src/
 
 ### 📝 类型文件示例 (types.ts)
 
-```typescript
+```tsx
 // 基础实体类型
 export type User = {
   id: string
@@ -525,7 +525,7 @@ export type CreateTodoParams = {
 
 ### 🔧 Store 实现示例
 
-```typescript
+```tsx
 // userStore.ts
 import { ReactStore } from 'tiny-store'
 import type { UserState, LoginCredentials, User } from './types'
@@ -564,7 +564,7 @@ export class UserStore extends ReactStore<UserState> {
 2. **合理拆分 Store**：按业务域拆分，避免单个 Store 过大
 3. **使用具体的 selector**：避免返回整个状态对象
 
-```typescript
+```tsx
 // ✅ 好的 selector
 const userName = store.use(state => state.user.name)
 
