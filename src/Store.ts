@@ -1,9 +1,8 @@
 import { isSameArray } from "./immutable/compare";
 
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 type ValueUpdater<T> = T | ((v: T) => T);
 type SelectFn<S, D> = (s: S) => D;
-type GetterFn<S> = <D>(fn: SelectFn<S, D>, compare?: (a: D, b: D) => boolean) => D;
+type UseFn<S> = <D>(fn: SelectFn<S, D>, compare?: (a: D, b: D) => boolean) => D;
 type SelectorDependency<T> = {
   selector: SelectFn<any, T>;
   value: T;
@@ -63,7 +62,7 @@ export class Store<S = object> {
    * 选择器会缓存结果，如果参数和依赖收集器的值没有变化，则返回缓存结果
    */
   selector<T, Args extends any[]>(
-    fn: (get: GetterFn<S>, ...args: Args) => T
+    fn: (use: UseFn<S>, ...args: Args) => T
   ): (...args: Args) => T {
     let cache: SelectorCache<T, Args> | null = null;
     return (...args: Args) => {
@@ -88,7 +87,7 @@ export class Store<S = object> {
 
       // 需要重新计算，收集依赖
       const dependencies: SelectorDependency<any>[] = [];
-      const get: GetterFn<S> = (select, compare) => {
+      const use: UseFn<S> = (select, compare) => {
         const value = select(this.getState());
         dependencies.push({
           selector: select,
@@ -98,7 +97,7 @@ export class Store<S = object> {
         return value;
       };
 
-      const result = fn(get, ...args);
+      const result = fn(use, ...args);
 
       // 更新缓存
       cache = {

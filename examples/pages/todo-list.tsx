@@ -22,20 +22,10 @@ type AppState = {
     showCompleted: boolean;
     selectedTags: string[];
   };
-  stats: {
-    total: number;
-    completed: number;
-  };
 };
 
 // 工具函数
 const generateId = () => Math.random().toString(36).substr(2, 9);
-
-const updateStats = (todos: Todo[]) => ({
-  total: todos.length,
-  completed: todos.filter((t) => t.completed).length,
-});
-
 class TodoStore extends ReactStore<AppState> {
   constructor() {
     super({
@@ -45,22 +35,22 @@ class TodoStore extends ReactStore<AppState> {
         showCompleted: true,
         selectedTags: [],
       },
-      stats: {
-        total: 0,
-        completed: 0,
-      },
     });
   }
 
-  protected computedState(state: AppState): AppState {
-    state.stats = updateStats(state.todos);
-    return state;
-  }
+  stats = this.selector((use) => {
+    const total = use((s) => s.todos.length);
+    const completed = use((s) => s.todos.filter((t) => t.completed).length);
+    return {
+      total,
+      completed,
+    };
+  });
 
-  selectFilteredTodos = this.selector((get) => {
-    const showCompleted = get((s) => s.filters.showCompleted);
-    const selectedTags = get((s) => s.filters.selectedTags);
-    const todos = get((s) => s.todos);
+  selectFilteredTodos = this.selector((use) => {
+    const showCompleted = use((s) => s.filters.showCompleted);
+    const selectedTags = use((s) => s.filters.selectedTags);
+    const todos = use((s) => s.todos);
 
     return todos.filter((todo) => {
       if (!showCompleted && todo.completed) return false;
@@ -135,10 +125,10 @@ const todoStore = new TodoStore();
 
 // React 组件
 export function TodoApp() {
-  const todos = todoStore.use((state) => state.todos);
-  const user = todoStore.use((state) => state.user);
-  const filters = todoStore.use((state) => state.filters);
-  const stats = todoStore.use((state) => state.stats);
+  const todos = todoStore.use(s => s.todos);
+  const user = todoStore.use(s => s.user);
+  const filters = todoStore.use(s => s.filters);
+  const stats = todoStore.use(todoStore.stats);
 
   // 过滤后的待办事项
   const filteredTodos = todoStore.use(todoStore.selectFilteredTodos);

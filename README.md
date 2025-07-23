@@ -97,38 +97,183 @@ todoStore.setState({
 })
 ```
 
-### 计算状态
+### 状态选择器/计算状态
+
+Selector 是 TinyStore 的核心特性之一，提供**智能缓存**和**依赖追踪**的计算状态功能。
+
+#### 🚀 核心优势
+
+- **自动缓存**：只有依赖的状态发生变化时才重新计算
+- **依赖追踪**：自动检测使用了哪些状态属性，精确控制更新
+- **类型安全**：完整的 TypeScript 支持，编译期类型检查
+- **高性能**：避免昂贵的重复计算，提升应用性能
+
+#### 📝 基础示例
 
 ```tsx
 import { ReactStore } from 'tiny-store'
 
-type AppState = {
-  todos: Array<{ completed: boolean }>
-  stats: {
-    total: number
-    completed: number
-  }
+type Todo = {
+  id: string
+  title: string
+  completed: boolean
+  priority: 'high' | 'medium' | 'low'
+  tags: string[]
 }
 
-class TodoStore extends ReactStore<AppState> {
+type TodoState = {
+  todos: Todo[]
+  filter: string
+  sortBy: 'title' | 'priority' | 'created'
+}
+
+class TodoStore extends ReactStore<TodoState> {
   constructor() {
     super({
       todos: [],
-      stats: { total: 0, completed: 0 }
+      filter: '',
+      sortBy: 'created'
     })
   }
   
-  // 自动计算派生状态
-  protected computedState(state: AppState): AppState {
-    state.stats = {
-      total: state.todos.length,
-      completed: state.todos.filter(t => t.completed).length
+  // 🎯 计算完成的待办事项 - 只有 todos 数组变化时才重新计算
+  completedTodos = this.selector(get => {
+    console.log('计算 completedTodos') // 只有在需要时才会打印
+    const todos = get(s => s.todos)
+    return todos.filter(todo => todo.completed)
+  })
+  
+  // 🎯 过滤后的待办事项 - 依赖 todos 和 filter
+  filteredTodos = this.selector(get => {
+    console.log('计算 filteredTodos') // 智能缓存避免重复计算
+    const todos = get(s => s.todos)
+    const filter = get(s => s.filter)
+    
+    if (!filter.trim()) return todos
+    
+    return todos.filter(todo => 
+      todo.title.toLowerCase().includes(filter.toLowerCase()) ||
+      todo.tags.some(tag => tag.toLowerCase().includes(filter.toLowerCase()))
+    )
+  })
+  
+  // 🎯 统计信息 - 基于其他 selector 构建
+  stats = this.selector(get => {
+    const todos = get(s => s.todos)
+    const completedTodos = this.completedTodos() // 复用其他 selector
+    
+    return {
+      total: todos.length,
+      completed: completedTodos.length,
+      pending: todos.length - completedTodos.length,
+      highPriority: todos.filter(t => t.priority === 'high').length
     }
-    return state
-  }
+  })
+  
+  // 🎯 支持参数的 selector - 获取特定标签的待办事项
+  todosByTag = this.selector((get, tag: string) => {
+    const todos = get(s => s.todos)
+    return todos.filter(todo => todo.tags.includes(tag))
+  })
+  
+  // 🎯 复杂计算 - 分组统计
+  groupedStats = this.selector(get => {
+    const todos = get(s => s.todos)
+    
+    // 模拟复杂计算
+    const priorityGroups = todos.reduce((acc, todo) => {
+      if (!acc[todo.priority]) {
+        acc[todo.priority] = { total: 0, completed: 0 }
+      }
+      acc[todo.priority].total++
+      if (todo.completed) {
+        acc[todo.priority].completed++
+      }
+      return acc
+    }, {} as Record<string, { total: number; completed: number }>)
+    
+    return priorityGroups
+  })
 }
 
 const todoStore = new TodoStore()
+
+// 📈 使用示例 - 展示缓存效果
+function TodoStats() {
+  // ✅ 第一次调用会计算
+  const stats = todoStore.stats()
+  
+  // ✅ 立即再次调用，直接返回缓存结果
+  const sameStats = todoStore.stats()
+  
+  // ✅ 参数化 selector 
+  const workTodos = todoStore.todosByTag('work')
+  const personalTodos = todoStore.todosByTag('personal')
+  
+  return (
+    <div>
+      <h3>统计信息</h3>
+      <p>总计: {stats.total}</p>
+      <p>已完成: {stats.completed}</p>
+      <p>待处理: {stats.pending}</p>
+      
+      <h3>按标签分类</h3>
+      <p>工作: {workTodos.length} 项</p>
+      <p>个人: {personalTodos.length} 项</p>
+    </div>
+  )
+}
+```
+
+#### ⚡ 性能对比
+
+```tsx
+// ❌ 没有 selector - 每次渲染都重新计算
+function BadExample() {
+  const todos = todoStore.use(s => s.todos)
+  
+  // 🐌 每次渲染都会重新过滤和计算
+  const completedTodos = todos.filter(todo => todo.completed)
+  const stats = {
+    total: todos.length,
+    completed: completedTodos.length,
+    pending: todos.length - completedTodos.length
+  }
+  
+  return <div>已完成: {stats.completed}</div>
+}
+
+// ✅ 使用 selector - 智能缓存
+function GoodExample() {
+  // 🚀 只有当 todos 数组真正变化时才重新计算
+  const stats = todoStore.use(todoStore.stats)
+  
+  return <div>已完成: {stats.completed}</div>
+}
+```
+
+#### 🔧 高级用法
+
+```tsx
+class AdvancedStore extends ReactStore<TodoState> {
+  todoCount = this.selector(get => {
+    const count = get(s => s.todos.length)
+    return {
+      count
+    }
+  })
+  
+  importantStats = this.selector(get => {
+    const stats = get(this.todoCount)
+    const highPriorityTodos = this.todosByTag('urgent')
+    
+    return {
+      ...stats,
+      urgent: highPriorityTodos.length,
+      urgentCompleted: highPriorityTodos.filter(t => t.completed).length
+    }
+  })
+}
 ```
 
 ### 多实例 Store 使用
