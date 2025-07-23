@@ -1,21 +1,7 @@
 {
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.example.json" }],
   "compilerOptions": {
-    "target": "esnext",
-    "strict": true,
-    "jsx": "react-jsx",
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "skipLibCheck": true /* FIXME remove this once vite fixes it */,
-    "allowImportingTsExtensions": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "verbatimModuleSyntax": true,
-    "declaration": true,
-    "isolatedDeclarations": true,
-    "noEmit": true,
-    "baseUrl": ".",
+    "esModuleInterop": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "debug"]
 }

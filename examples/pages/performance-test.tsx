@@ -1,7 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { ReactStore, op } from '../../src/index'
-import { produce } from 'immer'
-import { Map, List, fromJS } from 'immutable'
+import { op } from '../../src/index'
+import { produce, enableMapSet } from 'immer'
+import { fromJS, Map as IMap } from 'immutable'
+
+// 启用 Immer 对 Map 和 Set 的支持
+enableMapSet()
 
 // 测试数据类型
 interface TestUser {
@@ -32,6 +35,14 @@ interface TestState {
     activeUsers: number
   }
   [key: string]: any
+}
+
+// Map 测试数据类型
+interface MapTestData {
+  userMap: Map<string, TestUser>
+  settingsMap: Map<string, string>
+  statsMap: Map<string, number>
+  nestedMap: Map<string, Map<string, any>>
 }
 
 // 生成测试数据
@@ -65,6 +76,64 @@ function generateTestData(count: number): TestState {
       userCount: count,
       activeUsers: Math.floor(count * 0.7)
     }
+  }
+}
+
+// 生成 Map 测试数据
+function generateMapTestData(count: number): MapTestData {
+  const userMap = new Map<string, TestUser>()
+  const settingsMap = new Map<string, string>()
+  const statsMap = new Map<string, number>()
+  const nestedMap = new Map<string, Map<string, any>>()
+
+  // 生成用户 Map
+  for (let i = 0; i < count; i++) {
+    const user: TestUser = {
+      id: `user-${i}`,
+      name: `User ${i}`,
+      email: `user${i}@example.com`,
+      age: 20 + (i % 40),
+      tags: [`tag-${i % 5}`, `category-${i % 3}`],
+      profile: {
+        avatar: `avatar-${i}.jpg`,
+        bio: `Bio for user ${i}`,
+        settings: {
+          theme: i % 2 === 0 ? 'light' : 'dark',
+          notifications: i % 3 === 0
+        }
+      }
+    }
+    userMap.set(user.id, user)
+  }
+
+  // 生成设置 Map
+  settingsMap.set('theme', 'light')
+  settingsMap.set('language', 'zh-CN')
+  settingsMap.set('timezone', 'Asia/Shanghai')
+  settingsMap.set('fontSize', 'medium')
+  settingsMap.set('layout', 'grid')
+
+  // 生成统计 Map
+  statsMap.set('userCount', count)
+  statsMap.set('activeUsers', Math.floor(count * 0.7))
+  statsMap.set('totalPosts', count * 5)
+  statsMap.set('totalComments', count * 12)
+  statsMap.set('totalLikes', count * 25)
+
+  // 生成嵌套 Map
+  for (let i = 0; i < Math.min(10, count); i++) {
+    const innerMap = new Map<string, any>()
+    innerMap.set('name', `Category ${i}`)
+    innerMap.set('count', i * 10)
+    innerMap.set('active', i % 2 === 0)
+    nestedMap.set(`category-${i}`, innerMap)
+  }
+
+  return {
+    userMap,
+    settingsMap,
+    statsMap,
+    nestedMap
   }
 }
 
@@ -107,6 +176,15 @@ export function PerformanceTest() {
   // 测试数据
   const testData = useMemo(() => generateTestData(testSize), [testSize])
   const immutableData = useMemo(() => fromJS(testData), [testData])
+  
+  // Map 测试数据
+  const mapTestData = useMemo(() => generateMapTestData(testSize), [testSize])
+  const immutableMapData = useMemo(() => fromJS({
+    userMap: Array.from(mapTestData.userMap.entries()),
+    settingsMap: Array.from(mapTestData.settingsMap.entries()),
+    statsMap: Array.from(mapTestData.statsMap.entries()),
+    nestedMap: Array.from(mapTestData.nestedMap.entries()).map(([key, value]) => [key, Array.from(value.entries())])
+  }), [mapTestData])
 
   // 运行性能测试
   const runTests = useCallback(async () => {
@@ -277,8 +355,224 @@ export function PerformanceTest() {
     newResults.push(immutableTest4)
 
     setResults([...newResults])
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // ==================== Map 类型测试 ====================
+    
+    // 测试 5: Map 设置键值对
+    const tinyStoreMapTest1 = benchmark('TinyStore - Map设置键值对', () => {
+      op.setInMap<string, TestUser>('newUser', {
+        id: 'new-user',
+        name: 'New User',
+        email: 'new@example.com',
+        age: 25,
+        tags: ['new'],
+        profile: {
+          avatar: 'new.jpg',
+          bio: 'New user',
+          settings: { theme: 'light', notifications: true }
+        }
+      })(mapTestData.userMap)
+    }, iterations)
+    newResults.push(tinyStoreMapTest1)
+
+    // Immer - Map设置键值对
+    const immerMapTest1 = benchmark('Immer - Map设置键值对', () => {
+      produce(mapTestData, draft => {
+        draft.userMap.set('newUser', {
+          id: 'new-user',
+          name: 'New User',
+          email: 'new@example.com',
+          age: 25,
+          tags: ['new'],
+          profile: {
+            avatar: 'new.jpg',
+            bio: 'New user',
+            settings: { theme: 'light', notifications: true }
+          }
+        })
+      })
+    }, iterations)
+    newResults.push(immerMapTest1)
+
+    // Immutable.js - Map设置键值对  
+    const immutableMapTest1 = benchmark('Immutable.js - Map设置键值对', () => {
+      // 由于 Map 转换为数组存储，这里模拟添加新的键值对
+      const userMapArray = immutableMapData.get('userMap') as any
+      const newEntry = ['newUser', fromJS({
+        id: 'new-user',
+        name: 'New User',
+        email: 'new@example.com',
+        age: 25,
+        tags: ['new'],
+        profile: {
+          avatar: 'new.jpg',
+          bio: 'New user',
+          settings: { theme: 'light', notifications: true }
+        }
+      })]
+      return immutableMapData.set('userMap', userMapArray.push(newEntry))
+    }, iterations)
+    newResults.push(immutableMapTest1)
+
+    setResults([...newResults])
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // 测试 6: Map 更新值
+    const firstUserId = mapTestData.userMap.keys().next().value
+    if (firstUserId) {
+      const tinyStoreMapTest2 = benchmark('TinyStore - Map更新值', () => {
+        op.updateInMap(firstUserId, (user: TestUser) => ({
+          ...user,
+          name: 'Updated User',
+          age: user.age + 1
+        }))(mapTestData.userMap)
+      }, iterations)
+      newResults.push(tinyStoreMapTest2)
+
+      // Immer - Map更新值
+      const immerMapTest2 = benchmark('Immer - Map更新值', () => {
+        produce(mapTestData, draft => {
+          const user = draft.userMap.get(firstUserId)
+          if (user) {
+            user.name = 'Updated User'
+            user.age = user.age + 1
+          }
+        })
+      }, iterations)
+      newResults.push(immerMapTest2)
+
+      // Immutable.js - Map更新值
+      const immutableMapTest2 = benchmark('Immutable.js - Map更新值', () => {
+        // 在数组结构中找到并更新用户
+        return immutableMapData.updateIn(['userMap'], (userMapArray: any) => {
+          const index = userMapArray.findIndex((entry: any) => entry.get(0) === firstUserId)
+          if (index >= 0) {
+            return userMapArray.updateIn([index, 1], (user: any) => 
+              user.set('name', 'Updated User').update('age', (age: number) => age + 1)
+            )
+          }
+          return userMapArray
+        })
+      }, iterations)
+      newResults.push(immutableMapTest2)
+    }
+
+    setResults([...newResults])
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // 测试 7: Map 批量操作
+    const tinyStoreMapTest3 = benchmark('TinyStore - Map批量更新', () => {
+      let result = mapTestData.settingsMap
+      const updates = [
+        ['theme', 'dark'],
+        ['language', 'en-US'],
+        ['fontSize', 'large']
+      ] as [string, string][]
+      
+      for (const [key, value] of updates) {
+        result = op.setInMap(key, value)(result)
+      }
+      return result
+    }, Math.max(50, iterations / 3))
+    newResults.push(tinyStoreMapTest3)
+
+    // Immer - Map批量更新
+    const immerMapTest3 = benchmark('Immer - Map批量更新', () => {
+      produce(mapTestData, draft => {
+        draft.settingsMap.set('theme', 'dark')
+        draft.settingsMap.set('language', 'en-US')
+        draft.settingsMap.set('fontSize', 'large')
+      })
+    }, Math.max(50, iterations / 3))
+    newResults.push(immerMapTest3)
+
+    // Immutable.js - Map批量更新
+    const immutableMapTest3 = benchmark('Immutable.js - Map批量更新', () => {
+      // 批量更新数组格式的设置数据
+      return immutableMapData.updateIn(['settingsMap'], (settingsArray: any) => {
+        let result = settingsArray
+        const updates = [['theme', 'dark'], ['language', 'en-US'], ['fontSize', 'large']]
+        updates.forEach(([key, value]) => {
+          const index = result.findIndex((entry: any) => entry.get(0) === key)
+          if (index >= 0) {
+            result = result.setIn([index, 1], value)
+          }
+        })
+        return result
+      })
+    }, Math.max(50, iterations / 3))
+    newResults.push(immutableMapTest3)
+
+    setResults([...newResults])
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // 测试 8: Map 删除键
+    const tinyStoreMapTest4 = benchmark('TinyStore - Map删除键', () => {
+      return op.deleteFromMap('timezone')(mapTestData.settingsMap as any)
+    }, iterations)
+    newResults.push(tinyStoreMapTest4)
+
+    // Immer - Map删除键
+    const immerMapTest4 = benchmark('Immer - Map删除键', () => {
+      produce(mapTestData, draft => {
+        draft.settingsMap.delete('timezone')
+      })
+    }, iterations)
+    newResults.push(immerMapTest4)
+
+    // Immutable.js - Map删除键
+    const immutableMapTest4 = benchmark('Immutable.js - Map删除键', () => {
+      // 从数组中删除指定的键值对
+      return immutableMapData.updateIn(['settingsMap'], (settingsArray: any) => {
+        const index = settingsArray.findIndex((entry: any) => entry.get(0) === 'timezone')
+        return index >= 0 ? settingsArray.delete(index) : settingsArray
+      })
+    }, iterations)
+    newResults.push(immutableMapTest4)
+
+    setResults([...newResults])
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // 测试 9: 嵌套 Map 更新
+    const firstCategoryKey = mapTestData.nestedMap.keys().next().value
+    if (firstCategoryKey) {
+      const tinyStoreMapTest5 = benchmark('TinyStore - 嵌套Map更新', () => {
+        op.updateInMap(firstCategoryKey, op.setInMap('count', 999))(mapTestData.nestedMap)
+      }, iterations)
+      newResults.push(tinyStoreMapTest5)
+
+      // Immer - 嵌套Map更新
+      const immerMapTest5 = benchmark('Immer - 嵌套Map更新', () => {
+        produce(mapTestData, draft => {
+          const innerMap = draft.nestedMap.get(firstCategoryKey)
+          if (innerMap) {
+            innerMap.set('count', 999)
+          }
+        })
+      }, iterations)
+      newResults.push(immerMapTest5)
+
+      // Immutable.js - 嵌套Map更新
+      const immutableMapTest5 = benchmark('Immutable.js - 嵌套Map更新', () => {
+        // 在嵌套数组结构中更新内层 Map
+        return immutableMapData.updateIn(['nestedMap'], (nestedArray: any) => {
+          const outerIndex = nestedArray.findIndex((entry: any) => entry.get(0) === firstCategoryKey)
+          if (outerIndex >= 0) {
+            return nestedArray.updateIn([outerIndex, 1], (innerArray: any) => {
+              const innerIndex = innerArray.findIndex((entry: any) => entry.get(0) === 'count')
+              return innerIndex >= 0 ? innerArray.setIn([innerIndex, 1], 999) : innerArray
+            })
+          }
+          return nestedArray
+        })
+      }, iterations)
+      newResults.push(immutableMapTest5)
+    }
+
+    setResults([...newResults])
     setIsRunning(false)
-  }, [testData, immutableData, testSize])
+  }, [testData, immutableData, mapTestData, immutableMapData, testSize])
 
   // 按测试类型分组结果
   const groupedResults = useMemo(() => {
@@ -308,7 +602,7 @@ export function PerformanceTest() {
         <h2 style={{ marginTop: 0, color: '#4a5568' }}>测试说明</h2>
         <p style={{ margin: '10px 0', color: '#718096' }}>
           本测试对比了 TinyStore 操作符、Immer 和 Immutable.js 在常见不可变操作中的性能表现。
-          包括深度更新、添加元素、批量更新和嵌套更新等场景。
+          包括对象的深度更新、添加元素、批量更新和嵌套更新等场景，以及 Map 类型数据的设置键值对、更新值、批量操作、删除键和嵌套 Map 更新等操作。
         </p>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '20px' }}>

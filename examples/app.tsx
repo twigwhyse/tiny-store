@@ -3,6 +3,7 @@ import { Counter } from './pages/counter'
 import { TodoApp } from './pages/todo-list'
 import { PerformanceTest } from './pages/performance-test'
 import { MultiInstanceDemo } from './pages/multi-instance'
+import { StateManagementComparison } from './pages/state-management-comparison'
 
 const examples = [
   {
@@ -28,6 +29,12 @@ const examples = [
     title: '性能测试对比',
     description: '对比 TinyStore、Immer 和 Immutable.js 的性能',
     component: PerformanceTest
+  },
+  {
+    id: 'state-management-comparison',
+    title: '状态管理对比',
+    description: '对比 TinyStore、Zustand 和 Redux 的开发方式',
+    component: StateManagementComparison
   }
 ]
 
