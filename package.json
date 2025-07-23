@@ -1,5 +1,5 @@
 {
-  "name": "tiny-store",
+  "name": "@eoyo/tiny-store",
   "version": "1.0.0",
   "description": "A tiny, type-safe React state management library with immutable operations",
   "main": "dist/index.js",
