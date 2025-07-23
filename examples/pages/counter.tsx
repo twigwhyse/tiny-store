@@ -1,5 +1,5 @@
 import React from 'react'
-import { ReactStore, op } from 'tiny-store'
+import { ReactStore, op } from '@eoyo/tiny-store'
 
 // 定义状态类型
 interface CounterState {

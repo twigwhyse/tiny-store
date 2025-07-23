@@ -9,7 +9,7 @@
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "paths": {
-      "tiny-store": ["./src/index.ts"]
+      "@eoyo/tiny-store": ["./src/index.ts"]
     }
   },
   "include": ["examples/**/*", "vite-env.d.ts"],

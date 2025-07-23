@@ -7,7 +7,7 @@ export default defineConfig({
   root: 'examples',
   resolve: {
     alias: {
-      'tiny-store': path.resolve(__dirname, 'src/index.ts')
+      '@eoyo/tiny-store': path.resolve(__dirname, 'src/index.ts')
     }
   },
   server: {

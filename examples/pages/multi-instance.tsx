@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react'
-import { ReactStore, op } from 'tiny-store'
+import { ReactStore, op } from '@eoyo/tiny-store'
 
 // 数据模型定义
 type Task = {
