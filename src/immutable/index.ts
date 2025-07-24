@@ -26,12 +26,14 @@ import * as setOps from "./set-operators"
 import * as mapOps from "./map-operators"
 import * as commonOps from "./common-operators"
 import * as utilityOps from "./utility-operators"
+import * as recordOps from "./record-operators"
 
-export const op: typeof objectOps & typeof arrayOps & typeof setOps & typeof mapOps & typeof commonOps & typeof utilityOps = {
+export const op: typeof objectOps & typeof arrayOps & typeof setOps & typeof mapOps & typeof commonOps & typeof utilityOps & typeof recordOps = {
   ...objectOps,
   ...arrayOps,
   ...setOps,
   ...mapOps,
+  ...recordOps,
   ...commonOps,
   ...utilityOps,
 }
