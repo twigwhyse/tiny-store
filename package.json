@@ -33,8 +33,8 @@
     "zustand",
     "store"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "yoix@outlook.com",
+  "license": "MIT",
   "peerDependencies": {
     "@types/react": ">=18.0.0",
     "react": ">=18.0.0"

@@ -9,7 +9,7 @@
 - ⚡ 高性能：基于 React 18 的 `useSyncExternalStore`
 - 🔄 不可变操作：内置丰富的不可变数据操作工具
 - 🧮 计算状态：支持自动计算和缓存派生状态
-- 📦 零依赖：仅依赖 React，无需 Immer 或其他库
+- 📦 零依赖: 无需 Immer 或其他库
 
 ## 📦 安装
 
@@ -137,63 +137,69 @@ class TodoStore extends ReactStore<TodoState> {
   }
   
   // 🎯 计算完成的待办事项 - 只有 todos 数组变化时才重新计算
-  completedTodos = this.selector(get => {
-    console.log('计算 completedTodos') // 只有在需要时才会打印
-    const todos = get(s => s.todos)
-    return todos.filter(todo => todo.completed)
-  })
+  completedTodos = this.selector(
+    [(s) => s.todos],
+    (todos) => {
+      console.log('计算 completedTodos') // 只有在需要时才会打印
+      return todos.filter(todo => todo.completed)
+    }
+  )
   
   // 🎯 过滤后的待办事项 - 依赖 todos 和 filter
-  filteredTodos = this.selector(get => {
-    console.log('计算 filteredTodos') // 智能缓存避免重复计算
-    const todos = get(s => s.todos)
-    const filter = get(s => s.filter)
-    
-    if (!filter.trim()) return todos
-    
-    return todos.filter(todo => 
-      todo.title.toLowerCase().includes(filter.toLowerCase()) ||
-      todo.tags.some(tag => tag.toLowerCase().includes(filter.toLowerCase()))
-    )
-  })
-  
-  // 🎯 统计信息 - 基于其他 selector 构建
-  stats = this.selector(get => {
-    const todos = get(s => s.todos)
-    const completedTodos = this.completedTodos() // 复用其他 selector
-    
-    return {
-      total: todos.length,
-      completed: completedTodos.length,
-      pending: todos.length - completedTodos.length,
-      highPriority: todos.filter(t => t.priority === 'high').length
+  filteredTodos = this.selector(
+    [(s) => s.todos, (s) => s.filter],
+    (todos, filter) => {
+      console.log('计算 filteredTodos') // 智能缓存避免重复计算
+      
+      if (!filter.trim()) return todos
+      
+      return todos.filter(todo => 
+        todo.title.toLowerCase().includes(filter.toLowerCase()) ||
+        todo.tags.some(tag => tag.toLowerCase().includes(filter.toLowerCase()))
+      )
     }
-  })
+  )
   
-  // 🎯 支持参数的 selector - 获取特定标签的待办事项
-  todosByTag = this.selector((get, tag: string) => {
-    const todos = get(s => s.todos)
+  // 🎯 统计信息 - 基于计算
+  stats = this.selector(
+    [(s) => s.todos],
+    (todos) => {
+      const completedTodos = todos.filter(todo => todo.completed)
+      
+      return {
+        total: todos.length,
+        completed: completedTodos.length,
+        pending: todos.length - completedTodos.length,
+        highPriority: todos.filter(t => t.priority === 'high').length
+      }
+    }
+  )
+  
+  // 🎯 获取特定标签的待办事项
+  todosByTag = (tag: string) => {
+    const todos = this.getState().todos
     return todos.filter(todo => todo.tags.includes(tag))
-  })
+  }
   
   // 🎯 复杂计算 - 分组统计
-  groupedStats = this.selector(get => {
-    const todos = get(s => s.todos)
-    
-    // 模拟复杂计算
-    const priorityGroups = todos.reduce((acc, todo) => {
-      if (!acc[todo.priority]) {
-        acc[todo.priority] = { total: 0, completed: 0 }
-      }
-      acc[todo.priority].total++
-      if (todo.completed) {
-        acc[todo.priority].completed++
-      }
-      return acc
-    }, {} as Record<string, { total: number; completed: number }>)
-    
-    return priorityGroups
-  })
+  groupedStats = this.selector(
+    [(s) => s.todos],
+    (todos) => {
+      // 模拟复杂计算
+      const priorityGroups = todos.reduce((acc, todo) => {
+        if (!acc[todo.priority]) {
+          acc[todo.priority] = { total: 0, completed: 0 }
+        }
+        acc[todo.priority].total++
+        if (todo.completed) {
+          acc[todo.priority].completed++
+        }
+        return acc
+      }, {} as Record<string, { total: number; completed: number }>)
+      
+      return priorityGroups
+    }
+  )
 }
 
 const todoStore = new TodoStore()
@@ -206,7 +212,7 @@ function TodoStats() {
   // ✅ 立即再次调用，直接返回缓存结果
   const sameStats = todoStore.stats()
   
-  // ✅ 参数化 selector 
+  // ✅ 方法调用获取特定标签的待办事项
   const workTodos = todoStore.todosByTag('work')
   const personalTodos = todoStore.todosByTag('personal')
   
@@ -256,23 +262,26 @@ function GoodExample() {
 
 ```tsx
 class AdvancedStore extends ReactStore<TodoState> {
-  todoCount = this.selector(get => {
-    const count = get(s => s.todos.length)
-    return {
+  todoCount = this.selector(
+    [(s) => s.todos.length],
+    (count) => ({
       count
-    }
-  })
+    })
+  )
   
-  importantStats = this.selector(get => {
-    const stats = get(this.todoCount)
-    const highPriorityTodos = this.todosByTag('urgent')
-    
-    return {
-      ...stats,
-      urgent: highPriorityTodos.length,
-      urgentCompleted: highPriorityTodos.filter(t => t.completed).length
+  importantStats = this.selector(
+    [(s) => s.todos],
+    (todos) => {
+      const count = todos.length
+      const highPriorityTodos = todos.filter(t => t.tags.includes('urgent'))
+      
+      return {
+        count,
+        urgent: highPriorityTodos.length,
+        urgentCompleted: highPriorityTodos.filter(t => t.completed).length
+      }
     }
-  })
+  )
 }
 ```
 
@@ -426,35 +435,9 @@ userStore.setState({
 })
 ```
 
-## 📚 API 文档
+## 不可变操作工具 (op)
 
-### ReactStore
-
-```tsx
-class ReactStore<T> extends Store<T> {
-  constructor(initialState: T)
-  use<D>(selector: (state: T) => D): D // React hook
-  setState(updates: Partial<T>): void
-  getState(): T
-  getInitState(): T
-  subscribe(listener: (state: T) => void): () => void
-}
-```
-
-### Store (基础类)
-
-```tsx
-class Store<T> {
-  constructor(initialState: T)
-  setState(updates: Partial<T>): void
-  getState(): T
-  getInitState(): T
-  subscribe(listener: (state: T) => void): () => void
-  protected computedState(state: T): T // 重写以添加计算状态
-}
-```
-
-### 不可变操作工具 (op)
+推荐使用函数式的思维操作数据结构的变化, 提供了一些关键的操作符, 用户可以自己构建丰富的操作符函数
 
 #### 对象操作
 - `op.partial<T>(updates)` - 部分更新对象，支持函数更新器
@@ -471,15 +454,6 @@ class Store<T> {
 - `op.idIs(id)` - 创建 ID 匹配器
 - `op.pipe(...fns)` - 函数管道组合（从左到右）
 - `op.compose(...fns)` - 函数组合（从右到左）
-
-### 类型定义
-
-```tsx
-type ValueUpdater<T> = T | ((value: T) => T)
-type ValueMatcher<T> = T | ((value: T) => boolean)
-type IndexFinder<T> = number | ((arr: T[]) => number)
-type DeepPartial<T> = { ... } // 深度部分类型
-```
 
 ## 🎯 设计理念
 
@@ -533,12 +507,6 @@ class UserStore extends ReactStore<UserState> {
   // 业务方法
   login = (credentials: LoginData) => { /*...*/ }
   updateProfile = (data: ProfileData) => { /*...*/ }
-  
-  // 计算状态
-  protected computedState(state: UserState) {
-    state.isComplete = this.validateProfile(state.profile)
-    return state
-  }
   
   // 业务查询
   getPreferences = () => this.getState().preferences
@@ -738,4 +706,4 @@ pnpm examples
 
 ## 📄 License
 
-ISC
+[MIT license](./license)
