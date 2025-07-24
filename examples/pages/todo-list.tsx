@@ -38,20 +38,24 @@ class TodoStore extends ReactStore<AppState> {
     });
   }
 
-  stats = this.selector((use) => {
-    const total = use((s) => s.todos.length);
-    const completed = use((s) => s.todos.filter((t) => t.completed).length);
-    return {
+  completedTodos = this.selector(
+    [s => s.todos],
+    (todos) => todos.filter((t) => t.completed)
+  );
+
+  stats = this.selector(
+    [(s) => s.todos.length, (s) => this.completedTodos(s).length],
+    (total, completed) => ({
       total,
       completed,
-    };
-  });
+    })
+  );
 
-  selectFilteredTodos = this.selector((use) => {
-    const showCompleted = use((s) => s.filters.showCompleted);
-    const selectedTags = use((s) => s.filters.selectedTags);
-    const todos = use((s) => s.todos);
-
+  filteredTodos = this.selector([
+    (s) => s.filters.showCompleted,
+    (s) => s.filters.selectedTags,
+    (s) => s.todos,
+  ], (showCompleted, selectedTags, todos) => {
     return todos.filter((todo) => {
       if (!showCompleted && todo.completed) return false;
       if (selectedTags.length > 0) {
@@ -125,13 +129,13 @@ const todoStore = new TodoStore();
 
 // React 组件
 export function TodoApp() {
-  const todos = todoStore.use(s => s.todos);
-  const user = todoStore.use(s => s.user);
-  const filters = todoStore.use(s => s.filters);
+  const todos = todoStore.use((s) => s.todos);
+  const user = todoStore.use((s) => s.user);
+  const filters = todoStore.use((s) => s.filters);
   const stats = todoStore.use(todoStore.stats);
 
   // 过滤后的待办事项
-  const filteredTodos = todoStore.use(todoStore.selectFilteredTodos);
+  const filteredTodos = todoStore.use(todoStore.filteredTodos);
 
   // 获取所有标签
   const allTags = Array.from(new Set(todos.flatMap((todo) => todo.tags)));

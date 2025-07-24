@@ -1,19 +1,4 @@
-import { isSameArray } from "./immutable/compare";
-
 type ValueUpdater<T> = T | ((v: T) => T);
-type SelectFn<S, D> = (s: S) => D;
-type UseFn<S> = <D>(fn: SelectFn<S, D>, compare?: (a: D, b: D) => boolean) => D;
-type SelectorDependency<T> = {
-  selector: SelectFn<any, T>;
-  value: T;
-  compare: (a: T, b: T) => boolean;
-};
-type SelectorCache<T, Args extends any[]> = {
-  dependencies: SelectorDependency<any>[];
-  result: T;
-  args: Args;
-};
-
 export class Store<S = object> {
   protected state: S;
   private initState: S;
@@ -57,53 +42,49 @@ export class Store<S = object> {
     this.listener.forEach((fn) => fn(this.state));
   }
 
-  /**
-   * 创建一个选择器
-   * 选择器会缓存结果，如果参数和依赖收集器的值没有变化，则返回缓存结果
-   */
-  selector<T, Args extends any[]>(
-    fn: (use: UseFn<S>, ...args: Args) => T
-  ): (...args: Args) => T {
-    let cache: SelectorCache<T, Args> | null = null;
-    return (...args: Args) => {
-      // 检查参数是否变化（浅比较参数数组）
-      if (cache && !isSameArray(args, cache.args)) {
-        cache = null;
+  selector<Fns extends ((s: S) => any)[], R = unknown>(
+    selectors: Readonly<Fns>,
+    computed: (
+      ...args: {
+        [x in keyof Fns]: ReturnType<Fns[x]>;
       }
+    ) => R
+  ): (s?: S) => R {
+    // 每个 selector 都有自己的缓存，通过闭包保存
+    let cache: {
+      args: { [x in keyof Fns]: ReturnType<Fns[x]> } | null;
+      result: R;
+    } | null = null;
 
-      // 如果有缓存，先检查依赖是否变化
-      if (cache) {
-        const currentState = this.getState();
-        const dependenciesChanged = cache.dependencies.some((dep) => {
-          const currentValue = dep.selector(currentState);
-          return !dep.compare(currentValue, dep.value);
-        });
+    return (s = this.state) => {
+      // 计算当前 selectors 的结果
+      const currentArgs = selectors.map((fn) => fn(s)) as {
+        [x in keyof Fns]: ReturnType<Fns[x]>;
+      };
 
-        if (!dependenciesChanged) {
-          // 依赖没有变化，返回缓存结果
+      // 检查缓存是否存在且参数是否相同
+      if (cache && cache.args) {
+        let argsChanged = false;
+        
+        // 比较每个参数是否变化
+        for (let i = 0; i < currentArgs.length; i++) {
+          if (cache.args[i] !== currentArgs[i]) {
+            argsChanged = true;
+            break;
+          }
+        }
+        
+        // 如果参数没有变化，返回缓存结果
+        if (!argsChanged) {
           return cache.result;
         }
       }
 
-      // 需要重新计算，收集依赖
-      const dependencies: SelectorDependency<any>[] = [];
-      const use: UseFn<S> = (select, compare) => {
-        const value = select(this.getState());
-        dependencies.push({
-          selector: select,
-          value,
-          compare: compare ?? Object.is,
-        });
-        return value;
-      };
-
-      const result = fn(use, ...args);
-
-      // 更新缓存
+      // 计算新结果并更新缓存
+      const result = computed(...currentArgs);
       cache = {
-        dependencies,
-        result,
-        args,
+        args: currentArgs,
+        result
       };
 
       return result;
