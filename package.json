@@ -1,5 +1,5 @@
 {
-  "name": "@eoyo/tiny-store",
+  "name": "@twigwhyse/tiny-store",
   "version": "1.0.0",
   "description": "A tiny, type-safe React state management library with immutable operations",
   "main": "dist/index.js",
@@ -11,6 +11,13 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/twigwhyse/tiny-store.git"
+  },
+  "bugs": {
+    "url": "https://github.com/twigwhyse/tiny-store/issues"
   },
   "files": [
     "dist"
